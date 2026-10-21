@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZScaler Log Analyzer - Manual</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#141b26; --panel2:#1a2332; --line:#263245;
+    --fg:#d6dee8; --dim:#8b98a8; --acc:#4da3ff; --acc2:#7ec8ff;
+    --ok:#43c06e; --warn:#e0a63a; --bad:#e05555; --chip:#20304a;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+  code,pre{font-family:Consolas,"Cascadia Mono",monospace}
+  code{background:var(--panel2);padding:1px 6px;border-radius:4px;font-size:.88em;border:1px solid var(--line)}
+  pre{background:#0a0e14;border:1px solid var(--line);border-radius:8px;padding:12px 16px;overflow-x:auto;font-size:13px;line-height:1.5}
+  pre code{background:none;border:none;padding:0}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 28px 80px}
+  header.hero{background:linear-gradient(160deg,#101a2c 0%,#0d1117 70%);border-bottom:1px solid var(--line);padding:48px 0 36px;margin-bottom:32px}
+  header.hero .wrap{padding-bottom:0}
+  h1{font-size:34px;margin:0 0 6px;letter-spacing:.3px}
+  .sub{color:var(--dim);font-size:16px;max-width:940px}
+  .meta{margin-top:18px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{background:var(--chip);border:1px solid var(--line);border-radius:20px;padding:3px 14px;font-size:12.5px;color:var(--acc2)}
+  h2{font-size:24px;margin:56px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--line);color:#e8eef6}
+  h3{font-size:18px;margin:30px 0 10px;color:var(--acc2)}
+  p{margin:10px 0}
+  ul,ol{margin:8px 0;padding-left:24px} li{margin:5px 0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+  th{background:var(--panel2);text-align:left;padding:8px 12px;border:1px solid var(--line);color:#c9d4e2;font-weight:600}
+  td{padding:7px 12px;border:1px solid var(--line);vertical-align:top}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+  .tbl-scroll{overflow-x:auto}
+  .answers{border-left:3px solid var(--acc);background:rgba(77,163,255,.06);padding:10px 16px;margin:14px 0;border-radius:0 8px 8px 0;color:#dbe6f2}
+  .note{border-left:3px solid var(--warn);background:rgba(224,166,58,.07);padding:10px 16px;margin:14px 0;border-radius:0 8px 8px 0}
+  .shot{margin:20px 0}
+  .shot img{width:100%;height:auto;border:1px solid var(--line);border-radius:8px;display:block}
+  .shot .cap{color:var(--dim);font-size:12.5px;margin-top:6px;font-style:italic}
+  .tag{display:inline-block;background:#3a2027;color:#ff9d9d;border:1px solid #57303a;border-radius:4px;padding:0 7px;font-size:11.5px;font-family:Consolas,monospace;margin:0 2px 2px 0;white-space:nowrap}
+  .tag.amb{background:#3a2d10;color:#e3b341;border-color:#5a4718}
+  .tag.blu{background:#10263f;color:#7ec8ff;border-color:#1e4266}
+  .tag.gry{background:#21262d;color:#9aa6b4;border-color:#30363d}
+  .toc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 28px;columns:2;column-gap:40px}
+  .toc ol{margin:0;padding-left:20px} .toc li{margin:4px 0;break-inside:avoid}
+  .flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0}
+  .fstep{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-size:13.5px;text-align:center}
+  .fstep b{display:block;color:var(--acc2);font-size:13px}
+  .farrow{color:var(--dim);font-size:18px}
+  .backtop{position:fixed;right:22px;bottom:22px;background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:12px;opacity:.85}
+  footer{margin-top:70px;border-top:1px solid var(--line);padding-top:22px;color:var(--dim);font-size:13px}
+  @media(max-width:900px){.toc{columns:1}}
+  @media print{
+    body{background:#fff;color:#111}
+    .toc{border-color:#bbb;background:#fff}
+    pre{background:#f4f4f4;color:#111}
+    .backtop{display:none}
+    a{color:#0645ad}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <h1>ZScaler Log Analyzer - Manual</h1>
+    <p class="sub">A single-file, no-install Windows tool for <b>triaging Zscaler Internet Access (ZIA) web logs exactly as the admin portal exports them</b>. Point it at a folder of CSV exports and it answers the questions an investigator asks of a secure web gateway: who went where, what was malicious, what is checking in on a timer, which channels could carry data out or get round the controls - and when.</p>
+    <div class="meta">
+      <span class="pill">Author: Ben Morris</span>
+      <span class="pill">github.com/bpmorris22/ZScaler-Log-Analyzer</span>
+      <span class="pill">MIT licence</span>
+      <span class="pill">App v@@APPVER@@</span>
+      <span class="pill">Manual updated @@DATE@@</span>
+      <span class="pill">Fully offline</span>
+      <span class="pill">All screenshots use synthetic data (tenant "Acme Retail", example.* domains, documentation IP ranges)</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<h2 id="toc">Contents</h2>
+<div class="toc">
+  <ol>
+    <li><a href="#what">What it answers</a></li>
+    <li><a href="#setup">Requirements &amp; setup</a></li>
+    <li><a href="#export">Getting the logs out of ZIA</a></li>
+    <li><a href="#time">Timezones - read this once</a></li>
+    <li><a href="#quick">Quick start</a></li>
+    <li><a href="#overview">Overview, findings &amp; coverage</a></li>
+    <li><a href="#activity">Activity over time &amp; heatmaps</a></li>
+    <li><a href="#users">Users and User &rarr; host</a></li>
+    <li><a href="#dest">Destinations &amp; C2-like paths</a></li>
+    <li><a href="#security">Security</a></li>
+    <li><a href="#channels">Egress &amp; bypass channels</a></li>
+    <li><a href="#beacons">Beaconing</a></li>
+    <li><a href="#files">Files, IOC hits &amp; sources</a></li>
+    <li><a href="#filters">Filters &amp; pivot</a></li>
+    <li><a href="#example">Worked example - Acme Retail</a></li>
+    <li><a href="#flags">Flag reference</a></li>
+    <li><a href="#output">Outputs &amp; command line</a></li>
+    <li><a href="#limits">Limits, evidence handling &amp; troubleshooting</a></li>
+  </ol>
+</div>
+
+<h2 id="what">1. What it answers</h2>
+<div class="answers">
+  <b>Who went where?</b> Per user: requests, blocks, security events, distinct hosts, raw-IP destinations and the egress / bypass channels they used; the complete user &rarr; host map.<br>
+  <b>What was malicious?</b> Every request with a threat name, an ATP / malware / sandbox / DLP / SSL policy, a malicious category or a bad certificate - each with the source line it came from.<br>
+  <b>What is checking in on a timer?</b> Beacon timing per user &rarr; host pair, and implant-style URL paths (<code>/cmd/</code>, <code>?h=&lt;host&gt;&amp;u=&lt;user&gt;</code>) counted over every record.<br>
+  <b>How could data leave, or controls be bypassed?</b> Remote-access tools, tunnels / anonymisers, paste sites / temp file hosts / webhooks, file sharing, webmail, generative AI, DNS over HTTPS, raw IPs, uncategorised and newly registered sites.<br>
+  <b>When?</b> Hourly / daily charts, a user &times; time heatmap and an hour-of-week heatmap on the users' own business clock.
+</div>
+<p>The app reads the export, aggregates it once, and then lets you work the result interactively. Its findings are <b>leads</b>: every one points at the rows behind it, and every event row cites the original record (<code>SourceFile#row=N</code>) so it can be confirmed.</p>
+<div class="flow">
+  <div class="fstep"><b>1. Export</b>ZIA Web Insights &rarr; CSV</div><span class="farrow">&rarr;</span>
+  <div class="fstep"><b>2. Process</b>engine reads every record (~10 s per 1M)</div><span class="farrow">&rarr;</span>
+  <div class="fstep"><b>3. Overview</b>findings &amp; coverage</div><span class="farrow">&rarr;</span>
+  <div class="fstep"><b>4. Work the tabs</b>pivot, filter, heatmaps</div><span class="farrow">&rarr;</span>
+  <div class="fstep"><b>5. Confirm</b>cited rows + endpoint evidence</div>
+</div>
+
+<h2 id="setup">2. Requirements &amp; setup</h2>
+<ul>
+  <li><b>Windows 10 / 11</b> with <code>mshta.exe</code> (built in) and <b>Windows PowerShell 5.1</b> (built in). Nothing to install.</li>
+  <li>Download <code>ZScaler-Log-Analyzer.hta</code> from the latest GitHub release. If Windows marks it as downloaded: right-click &rarr; Properties &rarr; <b>Unblock</b>.</li>
+  <li>Run it from a <b>local folder</b>. From a mapped drive or UNC path Windows blocks the UTF-8 reader and the app falls back to ANSI file IO (non-ASCII text may be garbled).</li>
+  <li>Output goes to <code>_Processed\&lt;name&gt;\ZScaler-Log-Analyzer\</code> next to the app. The input is only ever read.</li>
+  <li><b>No network access, ever</b> - no update checks, no lookups, no telemetry. Safe to run on an isolated analysis machine.</li>
+</ul>
+
+<h2 id="export">3. Getting the logs out of ZIA</h2>
+<ol>
+  <li>In the ZIA admin portal open <b>Analytics &rarr; Web Insights &rarr; Logs</b>.</li>
+  <li>Set the time range and any filters (users, locations). The filters are written into the export's preamble and shown on <b>Sources</b>.</li>
+  <li>Choose columns. At least: <code>Event Time</code>, <code>User</code>, <code>URL</code>, <code>Policy Action</code>, <code>URL Category</code>, <code>URL Super Category</code>, <code>URL Class</code>, <code>Cloud Application</code> (+ <code>Class</code>), <code>Threat Name</code> / <code>Threat Category</code>, <code>Department</code>, <code>Location</code>, <code>Blocked Policy Type</code>. <b>Strongly recommended: <code>Client IP</code>, <code>Client Public IP</code> and <code>Device Hostname</code></b> - without them the logs identify the user but not the machine or its address, and scoping an endpoint has to fall back on what the traffic itself reveals. Also useful: <code>Server IP</code>, <code>Request Size</code> / <code>Response Size</code> (enable the byte-based checks), <code>File Name</code> / <code>File Type</code>, <code>User Agent</code>, <code>Device Owner</code>. These optional columns are mapped by their documented names and marked provisional until validated against a real export; when present they appear as <code>ClientIPs</code> / <code>PublicIPs</code> / <code>Devices</code> on Users and in each event row's <code>Extra</code> field.</li>
+  <li><b>Export CSV</b>. Do not open and re-save it in Excel - that rewrites dates and quoting.</li>
+</ol>
+<div class="note"><b>The row cap.</b> A ZIA export stops at a row limit (1,000,000 has been seen; the synthetic sample uses 100,000). When a file holds <i>exactly</i> a round limit the app raises a <b>CRITICAL</b> finding: activity after the last record is <b>missing</b>, not absent. Export the period in slices - one per day, or per user group - and process the whole folder together. Overlapping slices are fine: a file reached twice is read once.</div>
+<p>Columns are mapped by header name, so an export with your own column choice still reads. Columns the app does not know are listed on <b>Sources &rarr; Files</b>; key columns that are missing are flagged there too.</p>
+
+<h2 id="time">4. Timezones - read this once</h2>
+<p>Three clocks are in play, and the app keeps them apart:</p>
+<table>
+  <tr><th>Clock</th><th>Where it comes from</th><th>Where the app uses it</th></tr>
+  <tr><td><b>Export clock</b></td><td>ZIA writes <code>Event Time</code> in the <b>exporting admin's portal timezone</b>, as an abbreviation - e.g. <code>September 15, 2026 6:41:09 PM PDT</code>.</td><td>Converted to UTC per record. The original text is kept as <code>Time_Source</code> on every event row.</td></tr>
+  <tr><td><b>UTC</b></td><td>The conversion above.</td><td>Every table, every chart bar, every export. All times shown are UTC.</td></tr>
+  <tr><td><b>Business clock</b></td><td>You choose it on <b>Activity over time</b> (remembered).</td><td>The hour-of-week heatmap and the <b>Off-hours only</b> filter (before 07:00, from 19:00, weekends).</td></tr>
+</table>
+<ul>
+  <li>The abbreviation is mapped per record, so a daylight-saving change inside the export is handled.</li>
+  <li><b>Ambiguous abbreviations</b> - IST, CST, BST, AST, GST each name more than one zone - are converted with the usual meaning and raise a finding. Confirm the tenant's portal timezone.</li>
+  <li><b>Unknown or missing zone</b>: the run stops and asks for the <b>Source timezone override</b> (<code>+HH:MM</code>; CLI <code>/tz:</code>). An override replaces the written zone on <i>every</i> record, and Overview says so.</li>
+  <li><b>Set the business clock to the users' zone.</b> It defaults to the export's zone - which is the admin's, not necessarily the users'. In the synthetic sample the admin is on PDT and the users work in Brisbane (UTC+10:00).</li>
+</ul>
+
+<h2 id="quick">5. Quick start</h2>
+<ol>
+  <li>Run the <code>.hta</code>. Click <b>Folder&hellip;</b> and pick the folder of exports (or <b>File&hellip;</b> for one CSV). The line under the input shows how many Zscaler CSVs were found, who exported them, when, and the zone of the first Event Time.</li>
+  <li>Check the <b>Target name</b> - it names the output folder. It is guessed from a <code>Cases\&lt;case-id&gt;</code> path or the exporting admin's tenant.</li>
+  <li>Leave the timezone override blank unless the zone line says otherwise. Optionally set a <b>case window</b> (UTC) and an <b>IOC list</b> (swept through every raw record).</li>
+  <li><b>Process &rarr; analyze</b>. The result loads automatically; <b>Load existing run (.json)&hellip;</b> reopens an earlier run instantly.</li>
+</ol>
+<div class="shot"><img src="{{IMG:ov}}" alt="Control panel and Overview after processing"><div class="cap">The control panel after a run: input, target name, output folder, the detected source zone (PDT, mapped per row), then the tab bar and the Overview statistics.</div></div>
+
+<h2 id="overview">6. Overview, findings &amp; coverage</h2>
+<p>The <b>findings</b> list is generated from every table by the app's rules, most severe first. CRITICAL and HIGH need checking; MEDIUM is worth a look; LOW and INFO are context. Click a finding to open the table behind it, already filtered.</p>
+<div class="shot"><img src="{{IMG:ov-full}}" alt="Findings list"><div class="cap">Findings for the synthetic sample: the row cap, an allowed suspicious file, a C2-like destination with three users, IOC hits, blocked threats, beaconing, remote access, a temp file host, DNS over HTTPS and more. Each quotes its evidence - here the C2 finding cites the record it quotes (#row=40056).</div></div>
+<p>Below the findings, <b>Coverage</b> shows requests, users, hosts, blocks and security events per UTC day, and the export's own metadata - who exported it, when, with which filters, and the zone its Event Time used. A day that stops early, or a run that ends long before the report was created, is a coverage gap.</p>
+<div class="shot"><img src="{{IMG:coverage}}" alt="Coverage per day"><div class="cap">Coverage: the last day is the edge of the export (it was cut by the row cap), and the report was created three days after the last record.</div></div>
+
+<h2 id="activity">7. Activity over time &amp; heatmaps</h2>
+<p>Stacked hourly or daily bars (UTC) from counters the engine keeps over <b>every</b> record - the table filters and pivot do not apply here. Panels: requests by outcome (allowed / blocked by policy / SSL / security / unknown), security events, egress channels, bypass &amp; remote control, blocked risky channels, active users, unscannable files &amp; IOC hits. Hover a bar for exact counts; click it to open the related table for that day. Each panel has a table view. Hatched intervals have no records at all - no data, not no activity.</p>
+<div class="shot"><img src="{{IMG:activity}}" alt="Activity charts"><div class="cap">Requests by outcome follow the working day - except the flat overnight floor from 16 September, which is the implant checking in around the clock. The raw-IP series on the bypass panel tells the same story.</div></div>
+<p>Two heatmaps follow:</p>
+<ul>
+  <li><b>User activity heatmap</b> - requests per user per hour or day (UTC), log colour scale. Click a cell to filter every table to that user and that day.</li>
+  <li><b>Hour-of-week heatmap</b> - requests by weekday and hour on the <b>business clock</b>, summed over the export, with each user's off-hours share; users at 25 % or more are amber. Automated software - agents, sync clients, adware, implants - shows as a flat band through the night.</li>
+</ul>
+<div class="shot"><img src="{{IMG:heatmaps}}" alt="Heatmaps"><div class="cap">Business clock UTC+10:00. Three users (c.diaz, d.patel, k.berg) gain a continuous night-time band part-way through the week; g.silva has a faint band all week (adware polling every five minutes).</div></div>
+
+<h2 id="users">8. Users and User &rarr; host</h2>
+<p>One row per user: requests, allowed, blocked, unknown outcome, security events, threats, distinct hosts and raw-IP hosts, active days, the channels used (with request counts), unscannable files, SSL issues, and their busiest and most-blocked categories. Flags include <span class="tag">CONTACTED-SUSPECT-HOST</span> (the user reached a host flagged for C2-like behaviour), <span class="tag">THREAT</span>, <span class="tag amb">REMOTE-ACCESS</span>, <span class="tag amb">TUNNEL/PROXY</span>, <span class="tag amb">PASTE/WEBHOOK</span>.</p>
+<p><b>User &rarr; host (every pair)</b> lists every user / host pair with its request count and first / last request - the complete membership behind the TopUsers summaries elsewhere (those list only the busiest four users per row).</p>
+<div class="shot"><img src="{{IMG:users}}" alt="Users tab"><div class="cap">The three users who reached the suspect host are flagged CONTACTED-SUSPECT-HOST; the row detail shows every field and offers a pivot or a user filter.</div></div>
+
+<h2 id="dest">9. Destinations &amp; C2-like paths</h2>
+<p>One row per destination host: requests, users, outcome, category, cloud app, channels, raw IP, entropy (a DGA hint), active days, <b>NewAfterBaseline</b> (first request after the first 24 hours of the export), the C2 path counters and sample paths. Sub-tabs: <b>C2-like paths</b>, <b>Raw IP</b>, <b>New after day 1</b>, <b>Single user</b>.</p>
+<p>The engine tests the <b>full path of every record</b> for implant-style patterns and counts them:</p>
+<ul>
+  <li><b>Strong</b> (<code>C2PathHits</code>): <code>/cmd/</code>, <code>/getcmd</code>, <code>/sendcmd</code>, <code>/implant</code>, <code>/exfil</code>, <code>/gate.php</code>, or a query that reports host and user (<code>?h=&lt;host&gt;&amp;u=&lt;user&gt;</code>).</li>
+  <li><b>Weak</b> (<code>C2WeakHits</code>): <code>/command</code>, <code>/task</code>, <code>/checkin</code>, <code>/hello</code>, <code>/register</code> - scored only on raw-IP or uncategorised hosts, because ordinary SaaS uses them too.</li>
+  <li><code>C2Paths</code> keeps the first matching paths, each with its citation <code>[file#row=N]</code>.</li>
+</ul>
+<p>A strong path on a raw IP or uncategorised host is <span class="tag">C2-LIKE-PATH</span> (high); a raw IP first seen after day 1 and reached by three or more users is <span class="tag">NEW-RAW-IP-MULTI-USER</span>. Either makes the host <b>SUSPECT</b>, and every other table then tags rows that touch it.</p>
+<div class="shot"><img src="{{IMG:hosts_c2}}" alt="C2-like paths"><div class="cap">203.0.113.77: a raw IP, uncategorised, first seen on 16 September, reached by three users, 16,000+ implant-style requests. A lead - confirm it on the endpoints before calling it C2.</div></div>
+
+<h2 id="security">10. Security</h2>
+<ul>
+  <li><b>Security events</b> - every request with a threat name / category, an ATP / malware / sandbox / DLP / SSL policy, a malicious category, or a failed / self-signed certificate. <code>Reason</code> says which; <code>SourceFile</code> + <code>SourceLine</code> cite the record; <code>Time_Source</code> is the original Event Time text.</li>
+  <li><b>Blocked (user/host)</b> - blocked requests aggregated per user, host and action. 1,000+ blocks to one host is <span class="tag gry">PERSISTENT-RETRY</span> - software, not a person.</li>
+  <li><b>Policy actions</b> - every ZIA action with counts.</li>
+</ul>
+<p>Outcomes are three-state: <b>allowed</b>, <b>blocked</b>, or <b>unknown</b> (no Policy Action in the record). A threat with an unknown outcome is <span class="tag">THREAT-OUTCOME-UNKNOWN</span> and is never presented as blocked. A blocked threat is still a lead: something on the endpoint made the request.</p>
+<div class="shot"><img src="{{IMG:security}}" alt="Security events"><div class="cap">Three blocked threats (a trojan download, two phishing requests) and one allowed: a "Suspicious" HTML file that got through.</div></div>
+
+<h2 id="channels">11. Egress &amp; bypass channels</h2>
+<p>Requests per channel, user and host, with allowed / blocked counts, active days, category, cloud app and a sample URL. Sub-tabs per channel.</p>
+<table>
+  <tr><th>Channel</th><th>What lands here</th><th>Typical flag</th></tr>
+  <tr><td>Remote access tool</td><td>Remote Access Tools category; AnyDesk, TeamViewer, ScreenConnect, Splashtop, RustDesk... by app or host</td><td><span class="tag">REMOTE-ACCESS-ALLOWED</span> / <span class="tag amb">-BLOCKED</span></td></tr>
+  <tr><td>Anonymiser / proxy / tunnel</td><td>Anonymizer / proxy / VPN categories; ngrok, trycloudflare, localtunnel, Tor...</td><td><span class="tag">TUNNEL/PROXY-ALLOWED</span></td></tr>
+  <tr><td>Paste / temp file host / webhook</td><td>pastebin, transfer.sh, file.io, gofile, webhook.site, Telegram bot API, Discord webhooks, WeTransfer, MEGA...</td><td><span class="tag">PASTE/WEBHOOK-ALLOWED</span></td></tr>
+  <tr><td>File sharing / storage, Webmail, Generative AI</td><td>By category / cloud app class</td><td><span class="tag">BULK-UPLOAD</span> over 100 MB when sizes are exported; otherwise context</td></tr>
+  <tr><td>DNS over HTTPS</td><td>DoH providers</td><td><span class="tag amb">DOH-BYPASS</span> - bypasses DNS logging and filtering</td></tr>
+  <tr><td>Raw IP destination</td><td>URL with an IP address instead of a hostname</td><td><span class="tag amb">RAW-IP-ALLOWED</span></td></tr>
+  <tr><td>Newly registered / uncategorised, Crypto, Spyware / adware</td><td>By category / URL class</td><td>context</td></tr>
+</table>
+<p>Requests to Zscaler's own service IPs (category <i>Zscaler Proxy IPs</i>) are tagged <span class="tag gry">ZSCALER-NODE</span> and not treated as anonymisers.</p>
+<div class="shot"><img src="{{IMG:channels}}" alt="Egress and bypass channels"><div class="cap">Flagged channel rows: the suspect host on two channels per infected user, DNS over HTTPS, TeamViewer, and a benign raw-IP printer service (198.51.100.20) as a contrast - medium, not suspect.</div></div>
+
+<h2 id="beacons">12. Beaconing</h2>
+<p>Timer-driven traffic, per user &rarr; host pair. Requests within 2 seconds of each other form one <b>check-in</b>; the gaps between check-ins are the intervals.</p>
+<ul>
+  <li><code>MedianIntervalSec</code> - the typical gap. <code>JitterPct</code> - median absolute deviation as a share of it. <code>RegularPct</code> - the share of gaps within &plusmn;20 % (at least &plusmn;3 s) of the median: 100 is a perfect timer.</li>
+  <li>Pairs with fewer than 8 check-ins are not scored. 60 %+ regular, 20+ check-ins, 5 s+ apart to a raw IP, uncategorised host or C2-like path is <span class="tag">BEACON</span>; to a categorised host <span class="tag amb">PERIODIC</span>; to big-vendor infrastructure <span class="tag gry">PERIODIC-INFRA</span>.</li>
+  <li>Agents, updaters, heartbeats and adware beacon too - judge each by the host, the category and the paths. Event Time has one-second resolution.</li>
+</ul>
+<div class="shot"><img src="{{IMG:beacons}}" alt="Beaconing"><div class="cap">Sorted by flag: three pairs check in with 203.0.113.77 every ~30 s, 100 % regular; below them adware polling every 300 s while blocked, and a short burst of blocked AnyDesk attempts.</div></div>
+
+<h2 id="files">13. Files, IOC hits &amp; sources</h2>
+<ul>
+  <li><b>Unscannable files</b> - transfers ZIA could not inspect (password-protected or encrypted archives, oversized files). Allowed ones are an evasion route.</li>
+  <li><b>Large uploads</b> - single requests of 10 MB or more (only when the export has a request-size column).</li>
+  <li><b>IOC hits</b> - terms set before processing are swept through every raw record (whole-token, case-insensitive) and each hit keeps its source line; terms applied afterwards flag matching table rows at once (<b>Matches in tables</b>). An <code>IOC.txt</code> next to the app is loaded at launch.</li>
+  <li><b>Sources</b> - every input file with its status, records, UTC span, the zone(s) its Event Time used, whether it hit a row cap, record order, the export's metadata, unparsed / incomplete records (cited by line) and unmapped columns; plus requests per day.</li>
+</ul>
+<div class="shot"><img src="{{IMG:unscannable}}" alt="Unscannable files"><div class="cap">The password-protected ZIP c.diaz downloaded nineteen minutes before the first check-in - ZIA allowed it because it could not look inside.</div></div>
+<div class="shot"><img src="{{IMG:ioc}}" alt="IOC terms"><div class="cap">IOC terms from IOC.txt, swept through every raw record at processing time.</div></div>
+<div class="shot"><img src="{{IMG:files}}" alt="Sources - files"><div class="cap">Sources: the export holds exactly 100,000 records (ROW-CAP-HIT), and two users named in its filter have no records at all (FILTERED-USERS-ABSENT).</div></div>
+
+<h2 id="filters">14. Filters &amp; pivot</h2>
+<table>
+  <tr><th>Control</th><th>What it does</th></tr>
+  <tr><td>Search</td><td>Substring over every column and flag name, this table only.</td></tr>
+  <tr><td>All rows / Flagged / High only</td><td>Severity filter.</td></tr>
+  <tr><td>Date window</td><td>UTC, inclusive. Event rows by their time; aggregate rows when their first..last span overlaps.</td></tr>
+  <tr><td><b>Pivot</b></td><td>Follow one indicator - user, host, IP, CIDR range or URL text - across <b>every</b> tab (whole-token). Each tab button shows how many rows match (&#9670;) and Overview lists them. Stays on as you move.</td></tr>
+  <tr><td>User / Department</td><td>Stay applied across tabs. On Destinations the user filter uses the complete User &rarr; host map, so it is exact. After loading another run, a user or department the new run lacks is cleared and reported.</td></tr>
+  <tr><td>Allowed only / Blocked only</td><td>Unknown outcomes are in neither.</td></tr>
+  <tr><td>Off-hours only</td><td>Event rows outside 07:00-19:00 or at the weekend on the business clock.</td></tr>
+  <tr><td>Hide common infrastructure</td><td>Hides Microsoft, Google, Apple, Akamai, CloudFront, WhatsApp, Facebook, Adobe... Cloud hosting that attackers rent (amazonaws.com, azure websites) is never hidden.</td></tr>
+</table>
+<div class="shot"><img src="{{IMG:pivot}}" alt="Pivot on an IP"><div class="cap">Pivot on 203.0.113.77: Overview lists every table that mentions it, and each tab button carries the match count.</div></div>
+<div class="shot"><img src="{{IMG:userfilter}}" alt="User filter on Destinations"><div class="cap">User filter k.berg with common infrastructure hidden: what is left is the suspect host, the company's own portal, partners - and file.io.</div></div>
+<p>Every table also offers <b>Export view &rarr; CSV</b> (exactly the rows on screen, with their flags), <b>Open full CSV</b> (the engine's complete table) and <b>Copy for case notes</b>. Click any row for every field, untruncated, with its citation.</p>
+
+<h2 id="example">15. Worked example - Acme Retail</h2>
+<p>The synthetic sample is a week of web traffic for a fictional retailer: twelve users in Brisbane (UTC+10:00), exported by an admin on PDT, cut at 100,000 rows. An intrusion is planted in it. Walking it through the app:</p>
+<ol>
+  <li><b>Coverage first.</b> Overview opens with <span class="tag">ROW-CAP-HIT</span>: records run 2026-09-13T14:03:00Z to 2026-09-18T04:05:50Z, but the report was created on 21 September. Everything after Friday afternoon is missing - re-export from 2026-09-18T04:05:50Z. Sources also shows two filtered users with no records.</li>
+  <li><b>The strongest lead.</b> "1 destination with command-and-control-like URL paths": <code>203.0.113.77</code>, a raw IP, uncategorised, first seen 2026-09-16T00:31:40Z, three users, 16,000+ requests such as <code>/api/hello?h=ACME-WS07&amp;u=c.diaz</code>, <code>/api/cmd/ACME-WS07</code>, <code>/api/register/ACME-WS07</code>. The paths carry the workstation name and user - an implant reporting in.</li>
+  <li><b>Timing.</b> Beaconing shows each of the three users checking in every ~30 s, 100 % regular, around the clock. The hour-of-week heatmap (business clock +10:00) shows their night-time band starting mid-week.</li>
+  <li><b>Patient zero.</b> Pivot on c.diaz and look at the time before the first check-in: Files &rarr; Unscannable shows <code>files-transfer.example/dl/Invoice_4471.zip</code> downloaded at 2026-09-16T00:12:04Z - a password-protected archive ZIA allowed because it could not scan it. Nineteen minutes later, 2026-09-16T00:31:40Z, ACME-WS07 registers with 203.0.113.77.</li>
+  <li><b>Spread.</b> The same implant registers from ACME-WS12 (d.patel) at 2026-09-16T16:14:10Z and ACME-FIN03 (k.berg) at 2026-09-16T16:19:55Z - 02:14 and 02:19 local time, when nobody is working.</li>
+  <li><b>Data movement.</b> Filtering Destinations to k.berg (infrastructure hidden) leaves the suspect host, business sites and <code>file.io</code> - six uploads to a temporary file host at 2026-09-17T04:05:00Z (<span class="tag">PASTE/WEBHOOK-ALLOWED</span>). With request sizes in the export, Large uploads would quantify it.</li>
+  <li><b>Context, not the story.</b> Blocked phishing for f.haddad (2026-09-15T01:41:09Z) and a blocked trojan download for i.murphy (2026-09-14T04:20:33Z) - the controls worked, but those endpoints made the requests. One "Suspicious" HTML file got through to a.chen (2026-09-17T23:05:02Z). TeamViewer for an IT user (is it sanctioned?), DNS over HTTPS from d.patel's browser, adware polling from g.silva's machine every five minutes, blocked games and AnyDesk.</li>
+  <li><b>Hand-off.</b> Scope ACME-WS07, ACME-WS12 and ACME-FIN03 first (EDR, process and network telemetry, the ZIP on disk), cite the source rows from <b>Copy row</b> / Export view, and re-export the missing days.</li>
+</ol>
+<div class="note">Every step above is a lead derived from web logs. ZIA sees URLs, not processes: confirm on the endpoints before you call anything C2 or exfiltration.</div>
+
+<h2 id="flags">16. Flag reference</h2>
+<p>Rules live in the viewer, so they can change without reprocessing. Red = high, amber = medium, blue = context.</p>
+<div class="tbl-scroll"><table>
+  <tr><th>Flag</th><th>Meaning</th></tr>
+  <tr><td><span class="tag">ROW-CAP-HIT</span></td><td>The file holds exactly a common export row limit - the rest of the query is missing.</td></tr>
+  <tr><td><span class="tag">INCOMPLETE-RECORDS</span> <span class="tag">READ-FAILED</span></td><td>Records whose field count differs from the header were excluded (lines cited in Note); a file could not be read.</td></tr>
+  <tr><td><span class="tag">C2-LIKE-PATH</span></td><td>Implant-style URL path on a raw IP / uncategorised host (amber on a categorised host).</td></tr>
+  <tr><td><span class="tag">NEW-RAW-IP-MULTI-USER</span></td><td>Raw IP first seen after day 1 and reached by 3+ users.</td></tr>
+  <tr><td><span class="tag">SUSPECT-HOST</span> <span class="tag">CONTACTED-SUSPECT-HOST</span></td><td>The row touches a host flagged for one of the two behaviours above; the user reached such a host.</td></tr>
+  <tr><td><span class="tag">BEACON</span></td><td>60 %+ regular, 20+ check-ins, 5 s+ apart, to a raw IP / uncategorised host / C2-like path.</td></tr>
+  <tr><td><span class="tag">THREAT-ALLOWED</span> <span class="tag">THREAT-OUTCOME-UNKNOWN</span> <span class="tag">DLP</span></td><td>Named threat let through; named threat with no recorded outcome; data-loss-prevention match.</td></tr>
+  <tr><td><span class="tag">REMOTE-ACCESS-ALLOWED</span> <span class="tag">TUNNEL/PROXY-ALLOWED</span> <span class="tag">PASTE/WEBHOOK-ALLOWED</span> <span class="tag">BULK-UPLOAD</span></td><td>Risky channel allowed (or with unknown outcome: <code>-OUTCOME-UNKNOWN</code>); 100 MB+ to file sharing / webmail.</td></tr>
+  <tr><td><span class="tag amb">THREAT-BLOCKED</span> <span class="tag amb">ATP-BLOCK</span> <span class="tag amb">BAD-CERT-ALLOWED</span></td><td>Threat blocked (the endpoint still asked); ATP / malware / sandbox policy block; failed / self-signed certificate allowed.</td></tr>
+  <tr><td><span class="tag amb">DOH-BYPASS</span> <span class="tag amb">RAW-IP-ALLOWED</span> <span class="tag amb">NEW-WIDESPREAD</span> <span class="tag amb">DGA-LIKE</span> <span class="tag amb">PERIODIC</span></td><td>DNS over HTTPS; direct-to-IP allowed; new host reached by 5+ users; random-looking domain; timer-driven traffic to a categorised host.</td></tr>
+  <tr><td><span class="tag amb">AMBIGUOUS-TZ</span> <span class="tag amb">MISSING-COLUMNS</span> <span class="tag amb">SANDBOX-SUBMITTED</span></td><td>Zone abbreviation needs confirming; key columns not exported; file sent to the ZIA sandbox (verdict in the portal).</td></tr>
+  <tr><td><span class="tag blu">FILTERED-USERS-ABSENT</span> <span class="tag blu">UNSCANNED-ALLOWED</span> <span class="tag blu">OUTCOME-UNKNOWN</span> <span class="tag blu">PERSISTENT-RETRY</span> <span class="tag blu">ADWARE</span> <span class="tag blu">GENAI</span> <span class="tag blu">ZSCALER-NODE</span></td><td>Context: users in the export filter with no records; unscanned file let through; no Policy Action; 1,000+ blocks to one host; adware; generative AI; Zscaler's own service IP.</td></tr>
+</table></div>
+
+<h2 id="output">17. Outputs &amp; command line</h2>
+<table>
+  <tr><th>Output</th><th>What it is</th></tr>
+  <tr><td><code>&lt;name&gt;-ZScaler-&lt;stamp&gt;.json</code></td><td>Every table as a preview of up to 6,000 rows (priority rows first), true totals, hourly counters and hour-of-week bins - what the viewer loads.</td></tr>
+  <tr><td><code>&lt;stamp&gt;_&lt;table&gt;.csv</code></td><td>Every table in full. Event lists (security events, unscannable files, large uploads, IOC hits) stream to disk while reading, so nothing is dropped.</td></tr>
+  <tr><td><code>runinfo.json</code></td><td>Provenance entry per run (app, version, input, files, triage summary).</td></tr>
+</table>
+<pre><code>mshta "ZScaler-Log-Analyzer.hta" "&lt;input&gt;" ["&lt;outDir&gt;"] [/auto] [/from:yyyy-MM-dd] [/to:yyyy-MM-dd] [/tz:+HH:MM] [/selftest]</code></pre>
+<ul>
+  <li><code>&lt;input&gt;</code> - a CSV folder or file (several separated by <code>|</code>; processed with <code>/auto</code>), a run <code>.json</code>, or an output folder (reloads its newest run).</li>
+  <li><code>/from: /to:</code> - case window (UTC): prefills the date filter; it never changes scoring. <code>/tz:</code> - source timezone override.</li>
+  <li><code>/selftest</code> - with a <code>.json</code> or <code>/auto</code>: renders every view, writes the results to <code>ZScaler-Log-Analyzer.boot.log</code> next to the app, closes. For regression checks; <code>test\run-tests.ps1</code> in the repository runs the engine and viewer regression suite.</li>
+</ul>
+
+<h2 id="limits">18. Limits, evidence handling &amp; troubleshooting</h2>
+<h3>Limits</h3>
+<ul>
+  <li>ZIA logs only traffic forwarded to it: off-tunnel traffic, bypassed destinations and non-web protocols are absent. Absence in these logs is not absence of activity.</li>
+  <li>Web-log CSV only - NSS feeds, syslog, ZIA firewall and DNS logs are not read in this version.</li>
+  <li>Beacon timing works at Event Time's one-second resolution.</li>
+  <li>Runs saved by v0.1.0 classified C2 paths from six sample paths per host; the app says so on Overview - re-process them.</li>
+</ul>
+<h3>Evidence handling</h3>
+<ul>
+  <li>The input is only read. Keep the output folder outside any evidence directory (the default <code>_Processed\</code> beside the app is fine).</li>
+  <li>Findings and flags are leads. Cite the original record - <code>SourceFile#row=N</code> is the physical line the record starts on, header counted - and corroborate with endpoint evidence.</li>
+</ul>
+<h3>Troubleshooting</h3>
+<table>
+  <tr><th>Symptom</th><th>Cause / fix</th></tr>
+  <tr><td>"Event Time values carry no timezone" / "Unknown timezone abbreviation"</td><td>Set the Source timezone override to the exporting admin's portal timezone (ask the tenant admin).</td></tr>
+  <tr><td>"No Zscaler web-log CSV found"</td><td>The file has no header with Event Time, URL and Policy Action in its first 40 lines - re-export from Web Insights &gt; Logs, or check it was not re-saved by Excel.</td></tr>
+  <tr><td>Off-hours percentages look wrong</td><td>Set the business clock (Activity over time) to the users' zone.</td></tr>
+  <tr><td>Totals look too high</td><td>Should not happen - overlapping inputs are read once; check Sources and the "read once" finding.</td></tr>
+  <tr><td>Garbled characters</td><td>Run the app from a local folder, not a network path.</td></tr>
+  <tr><td>Something else</td><td>Show log (engine output) and <code>ZScaler-Log-Analyzer.boot.log</code> next to the app.</td></tr>
+</table>
+
+<footer>
+  ZScaler Log Analyzer v@@APPVER@@ - MIT licence - (c) 2026 Ben Morris - https://github.com/bpmorris22/ZScaler-Log-Analyzer<br>
+  Screenshots: synthetic data generated by <code>manual/make-synthetic.py</code> (fictional tenant, example.* domains, RFC 5737 documentation IP addresses). Not affiliated with Zscaler, Inc.; "Zscaler" and "ZIA" are trademarks of their owner.
+</footer>
+</div>
+<a class="backtop" href="#top">&uarr; top</a>
+</body>
+</html>

@@ -16,3 +16,6 @@ IOC.csv
 *.log
 *.gz
 *.zip
+# manual build intermediates (regenerate: make-synthetic.py -> capture-shots.ps1 -> build-manual.ps1)
+manual/images/
+manual/sample/

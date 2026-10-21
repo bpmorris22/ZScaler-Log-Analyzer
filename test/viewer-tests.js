@@ -99,4 +99,7 @@ rc = V.reconcile("bob@example.test", "Finance", users, depts);
 check("absent department is cleared, present user kept", rc.USERF === "bob@example.test" && rc.DEPTF === "" && /department filter Finance cleared/.test(rc.note));
 check("copy row copies the bound selection, not a re-looked-up index", /var t=DETSEL\.t, row=DETSEL\.row/.test(src) && /DETSEL\.t!==curTable\(\)/.test(src));
 check("loadObj clears the detail selection", /clearDetail\(\); SORTS=\{\};/.test(src));
+{ const ex = new Function(grab("c2Example") + "; return c2Example;")();
+  check("C2 finding example prefers a strong path over an earlier weak one", ex("weak /api/register/WS07 [f#row=2]  strong /api/hello?h=WS07&u=x [f#row=3]") === "/api/hello?h=WS07&u=x [f#row=3]");
+  check("C2 finding example falls back to the first path", ex("weak /api/task/1 [f#row=2]") === "/api/task/1 [f#row=2]"); }
 process.exitCode = fails ? 1 : 0;

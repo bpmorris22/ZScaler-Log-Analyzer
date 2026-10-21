@@ -1171,7 +1171,7 @@ function bootLog(msg){
 }
 window.onerror=function(msg,url,line){ bootLog("ONERROR line "+line+": "+msg); return false; };
 
-var APP_VERSION = "0.1.4";
+var APP_VERSION = "0.1.5";
 var APP_NAME = "ZScaler-Log-Analyzer";
 var MAXROWS = 3000;
 var DATA = null;                 // the loaded engine JSON
@@ -1533,6 +1533,10 @@ function c2Of(t,r){
   if(t.ix["C2PathHits"]==null){ var sp=String(v(t,r,"SamplePaths")); return c2Level(v(t,r,"Host"), C2_RE.test(sp)?1:0, C2_WEAK_RE.test(sp)?1:0, v(t,r,"Category")); }
   return c2Level(v(t,r,"Host"), v(t,r,"C2PathHits"), v(t,r,"C2WeakHits"), v(t,r,"Category")); }
 function legacyC2(){ var h=TABLES.hosts; return !!(h && h.ix["C2PathHits"]==null); }
+/* the example quoted in a finding: the first STRONG (implant-style) path, so the example matches the finding's claim;
+   a weak one only when no strong path was kept */
+function c2Example(s){ var p=String(s||"").split("  "), i; for(i=0;i<p.length;i++) if(/^strong /.test(p[i])) return p[i].replace(/^strong /,"");
+  return (p[0]||"").replace(/^(strong|weak) /,""); }
 /* big-vendor infrastructure (registered domains) - used by the Hide toggle and to downgrade periodicity flags.
    amazonaws / azure websites / cloud hosting are deliberately absent: attackers rent them. */
 var INFRA_RE=/(^|\.)(microsoft\.com|windowsupdate\.com|windows\.com|windows\.net|office\.com|office\.net|office365\.com|officeapps\.live\.com|live\.com|live\.net|msn\.com|bing\.com|bingapis\.com|skype\.com|azureedge\.net|msedge\.net|microsoftonline\.com|sharepoint\.com|onedrive\.com|outlook\.com|s-microsoft\.com|trafficmanager\.net|msftconnecttest\.com|google\.com|googleapis\.com|gstatic\.com|googleusercontent\.com|gvt1\.com|gvt2\.com|doubleclick\.net|google-analytics\.com|googletagmanager\.com|googlesyndication\.com|googleadservices\.com|youtube\.com|ytimg\.com|ggpht\.com|dns\.google|apple\.com|icloud\.com|mzstatic\.com|akamai\.net|akamaized\.net|akamaiedge\.net|akamaihd\.net|cloudfront\.net|whatsapp\.net|whatsapp\.com|facebook\.com|fbcdn\.net|instagram\.com|adobe\.com|adobe\.io|digicert\.com|globalsign\.com|sectigo\.com|letsencrypt\.org|mozilla\.org|mozilla\.net|cloudflare\.com|gamepass\.com|xboxlive\.com)$/i;
@@ -1688,7 +1692,7 @@ function buildFindings(){
   if(dlp) addF(3,nf(dlp)+" DLP event(s)","Data-loss-prevention engine matched content leaving the network - see DLP_MD5 / DLP_Identifier.","sec","security_events","DLP");
 
   var h=tbl("hosts"), c2=flaggedWith(h,/C2-LIKE-PATH/,3), nri=flaggedWith(h,/NEW-RAW-IP-MULTI-USER/,3); lst=[];
-  for(i=0;i<c2.length;i++) lst.push(v(h,h.rows[c2[i]],"Host")+" ("+nf(n(h,h.rows[c2[i]],"Users"))+" users, "+nf(n(h,h.rows[c2[i]],"C2PathHits"))+" implant-style requests, first "+v(h,h.rows[c2[i]],"First_UTC")+", e.g. "+clip(String(v(h,h.rows[c2[i]],"C2Paths")).split("  ")[0].replace(/^(strong|weak) /,""),140)+")");
+  for(i=0;i<c2.length;i++) lst.push(v(h,h.rows[c2[i]],"Host")+" ("+nf(n(h,h.rows[c2[i]],"Users"))+" users, "+nf(n(h,h.rows[c2[i]],"C2PathHits"))+" implant-style requests, first "+v(h,h.rows[c2[i]],"First_UTC")+", e.g. "+clip(c2Example(v(h,h.rows[c2[i]],"C2Paths")),140)+")");
   if(c2.length) addF(4,c2.length+" destination(s) with command-and-control-like URL paths on a raw IP / uncategorised / new host",topList(lst,4)+". Paths such as /cmd/, /hello?h=<host>&u=<user> are how implants check in and fetch tasks - treat as a lead: confirm on an endpoint (EDR, process / network telemetry) before calling it C2.","dst","hosts_c2");
   lst=[]; for(i=0;i<nri.length;i++) if(c2.indexOf(nri[i])<0) lst.push(v(h,h.rows[nri[i]],"Host")+" ("+nf(n(h,h.rows[nri[i]],"Users"))+" users, first "+v(h,h.rows[nri[i]],"First_UTC")+")");
   if(lst.length) addF(3,lst.length+" raw-IP destination(s) first seen after the first day and reached by 3+ users",topList(lst,5)+" - something new started talking to an IP address directly on several machines.","dst","hosts_ip","NEW-RAW-IP");

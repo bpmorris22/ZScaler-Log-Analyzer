@@ -1,4 +1,4 @@
-﻿# ZScaler Log Analyzer
+# ZScaler Log Analyzer
 
 A single-file Windows GUI (HTA) for triaging **Zscaler Internet Access (ZIA) web logs exactly as the admin portal exports them** (Analytics > Web Insights > Logs > Export CSV). Point it at a folder of exports and it answers the questions an investigator asks of a secure web gateway:
 
@@ -9,6 +9,10 @@ A single-file Windows GUI (HTA) for triaging **Zscaler Internet Access (ZIA) web
 - **When?** Stacked hourly / daily charts (requests by outcome, security events, egress, bypass, blocked risky channels, active users, unscannable files, IOC hits), a user x time heatmap and an hour-of-week heatmap on the users' business clock with each user's off-hours share.
 
 Part of the DFIR toolkit family (Artifact Finder, the EZ-tool wrappers, Hayabusa, Hawk, UAC, vSphere, Data Domain and FortiGate analysers). Works fully offline - it never reaches the network.
+
+## Manual
+
+The full field manual - exporting from ZIA, timezones, every tab and filter, a worked intrusion example and the flag reference, illustrated with synthetic data - is [docs/ZScaler-Log-Analyzer-Manual.html](docs/ZScaler-Log-Analyzer-Manual.html) (one self-contained HTML file; download it and open it in a browser). It is built from `manual/`: `make-synthetic.py` generates the fictional "Acme Retail" export, `capture-shots.ps1` screenshots the real HTA on it, `build-manual.ps1` embeds them into `manual-template.html`.
 
 ## How it works
 
@@ -24,7 +28,8 @@ Output goes to `_Processed\<name>\ZScaler-Log-Analyzer\` next to the app. The in
 
 ## Export notes
 
-- **Row limit.** A ZIA CSV export stops at a row cap (1,000,000 in the sample). A file holding exactly a round limit raises a CRITICAL finding - export the period in slices (per day / per user group) and process the folder together.
+- **Machine identity.** Tick **Client IP**, **Client Public IP** and **Device Hostname** when exporting. Without them the logs identify the user but not the machine or its address; with them the Users table shows `ClientIPs` / `PublicIPs` / `Devices` and every event row carries them in `Extra`.
+- **Row limit.** A ZIA CSV export stops at a row cap (1,000,000 has been seen). A file holding exactly a round limit raises a CRITICAL finding - export the period in slices (per day / per user group) and process the folder together.
 - **Columns** are mapped by header name. Validated against the sample's 26-column Web Insights export (No., Event Time, User, URL, Policy Action, Cloud Application Class, Cloud Application, URL Class, URL Super Category, URL Category, Threat Category, Threat Name, Location, Department, Blocked Policy Type, Certificate Chain Validity, Server Certificate Self Signed, DLP MD5, DLP Identifier, ALPN Protocol, Unscannable Type, Forwarding Rule, Forwarding Method, Application Segment, Gateway IP, Gateway Name). Client / Server IP, Request / Response Size, File Name / Type, MD5, User Agent, Referer and Device Hostname are mapped **provisionally** (documented portal names, not yet seen in a real export); they enable the byte-based checks when present. Unmapped columns are listed on Sources > Files.
 - **Time.** Event Time is written in the exporting admin's portal timezone as an abbreviation (`PDT`). It is converted to UTC per record (daylight-saving changes inside an export are handled). Ambiguous abbreviations (IST, CST, BST, AST, GST) are flagged; an unknown or missing zone stops the run until **Source timezone override** (`+HH:MM`) is set. Time_Source keeps the original text on every event row; SourceFile + SourceLine cite the record (`file#row=N`, header counted).
 
@@ -48,10 +53,11 @@ mshta "ZScaler-Log-Analyzer.hta" "<input>" ["<outDir>"] [/auto] [/from:yyyy-MM-d
 
 `ZScaler-Log-Analyzer.src.hta` + `ZScaler-Engine.ps1` -> `build-hta.ps1` -> `ZScaler-Log-Analyzer.hta` (guards: pure ASCII, no closing script tag in the engine, one placeholder).
 
-`test\run-tests.ps1` (Windows PowerShell 5.1) runs 62 regression checks on synthetic fixtures: beacon first-burst handling, C2 paths found on every record regardless of order or length, the timezone / override policy on every parse path (incl. `-00:30` and negative overrides as the HTA passes them), truncated and outcome-less records, complete user -> host membership, and the viewer's identity matching, three-state outcome rules and filters, reload reconciliation, legacy-run handling and overlapping / same-named multi-file input. `/selftest` additionally checks reload behaviour natively under mshta (`test\viewer-tests.js`, needs node.js). Run it after every change.
+`test\run-tests.ps1` (Windows PowerShell 5.1) runs 64 regression checks on synthetic fixtures: beacon first-burst handling, C2 paths found on every record regardless of order or length, the timezone / override policy on every parse path (incl. `-00:30` and negative overrides as the HTA passes them), truncated and outcome-less records, complete user -> host membership, and the viewer's identity matching, three-state outcome rules and filters, reload reconciliation, legacy-run handling and overlapping / same-named multi-file input. `/selftest` additionally checks reload behaviour natively under mshta (`test\viewer-tests.js`, needs node.js). Run it after every change.
 
 ## Changes
 
+- **0.1.5** - the C2 finding now quotes a strong (implant-style) path as its example rather than the first match of any strength; field manual added (`docs/`, built from `manual/` with synthetic data). Regression suite: 64 checks.
 - **0.1.4** - fixes from the fourth review, multi-file input: overlapping inputs (a folder and its subfolder, a folder and one of its files, a repeated path, or aliases of one path - `..`, case, 8.3 short names) read the same file more than once and inflated every count - each file is now canonicalised and read once, and the run reports how many duplicates were ignored; same-named files under separately selected roots got identical `SourceFile#row=N` citations - every SourceFile id is now the path relative to the common root of the whole file set, so it is unique in the run and identical however the same files were selected. The command line now accepts several `|`-separated inputs like the Input box. Regression suite: 62 checks.
 - **0.1.3** - fixes from the third review, all state carried across a reload: the row-detail panel and Copy row survived loading another run (Copy row re-resolved an old row index against the new table) - the selection is now bound to the table object it came from and cleared on every load and table change; a selected user or department absent from the new run stayed active but invisible (blank dropdown, zero rows) - rebuilt filters are now reconciled with the run (absent = cleared and reported in the status line, case-only difference = the run's spelling); Allowed only / Blocked only still treated a `(none)` action as blocked - they now use the three-state classifier, so unknown outcomes are in neither. Sorts are also reset on load (column positions can differ between runs). Regression suite: 53 checks; `/selftest`: 38.
 - **0.1.2** - fixes from the second review: the user -> host membership cache survived loading another run (same selected user could show the previous run's hosts as "exact") - every per-run cache is now reset on load, and `/selftest` checks it natively; allowed / blocked / unknown are now three distinct outcomes in every flag and finding (a threat or remote-access request with no Policy Action is `...-OUTCOME-UNKNOWN`, ranked like allowed, never "blocked"); runs saved by v0.1.0 (no C2 counters) are classified from their sample paths again, with a HIGH finding that C2 detection for that run is incomplete and should be re-processed. `/selftest` now also logs every finding. Regression suite: 44 checks.
